@@ -1,0 +1,32 @@
+name: quran_recitation_app
+description: A Quran recitation and verification app.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Add Google Fonts or local fonts for Amiri & Cormorant Garamond:
+  # fonts:
+  #   - family: Amiri
+  #     fonts:
+  #       - asset: fonts/Amiri-Regular.ttf
+  #       - asset: fonts/Amiri-Bold.ttf
+  #         weight: 700
+  #   - family: Cormorant Garamond
+  #     fonts:
+  #       - asset: fonts/CormorantGaramond-Regular.ttf
+  #       - asset: fonts/CormorantGaramond-SemiBold.ttf
+  #         weight: 600
