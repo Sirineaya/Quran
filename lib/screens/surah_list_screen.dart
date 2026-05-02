@@ -1,5 +1,5 @@
+//surah_list_screen.dart
 import 'package:flutter/material.dart';
-import '../models/surah.dart';
 import '../data/surah_data.dart';
 import '../theme/app_colors.dart';
 import '../widgets/surah_card.dart';

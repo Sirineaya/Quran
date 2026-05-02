@@ -1,3 +1,7 @@
+//record_screen.dart
+import 'dart:io';
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/surah.dart';
@@ -20,7 +24,8 @@ class _RecordScreenState extends State<RecordScreen> with TickerProviderStateMix
   bool _hasRecording = false;
   int _timerSeconds = 0;
   Timer? _timer;
-
+  final AudioRecorder _recorder = AudioRecorder();
+  String? _audioPath;
   late AnimationController _pulseController;
 
   @override
@@ -36,29 +41,58 @@ class _RecordScreenState extends State<RecordScreen> with TickerProviderStateMix
   void dispose() {
     _timer?.cancel();
     _pulseController.dispose();
+    _recorder.dispose();
     super.dispose();
   }
 
-  void _toggleRecord() {
-    if (_isRecording) {
-      _timer?.cancel();
-      _pulseController.stop();
-      setState(() {
-        _isRecording = false;
-        _hasRecording = true;
-      });
-    } else {
-      _timerSeconds = 0;
-      _pulseController.repeat();
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        setState(() => _timerSeconds++);
-      });
-      setState(() {
-        _isRecording = true;
-        _hasRecording = false;
-      });
+ Future<void> _toggleRecord() async {
+  print("RECORD BUTTON CLICKED");
+  if (_isRecording) {
+    final path = await _recorder.stop();
+
+    _timer?.cancel();
+    _pulseController.stop();
+
+    setState(() {
+      _isRecording = false;
+      _hasRecording = true;
+      _audioPath = path;
+    });
+  } else {
+    final hasPermission = await _recorder.hasPermission();
+    print("Permission: $hasPermission");
+    if (!hasPermission) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Microphone permission is required')),
+      );
+      return;
     }
+
+    final dir = await getTemporaryDirectory();
+    final path = '${dir.path}/quran_recitation.wav';
+
+    await _recorder.start(
+      const RecordConfig(
+        encoder: AudioEncoder.wav,
+        sampleRate: 16000,
+      ),
+      path: path,
+    );
+
+    _timerSeconds = 0;
+    _pulseController.repeat();
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() => _timerSeconds++);
+    });
+
+    setState(() {
+      _isRecording = true;
+      _hasRecording = false;
+      _audioPath = null;
+    });
   }
+}
 
   String get _formattedTime {
     final m = _timerSeconds ~/ 60;
@@ -119,12 +153,12 @@ class _RecordScreenState extends State<RecordScreen> with TickerProviderStateMix
                       // Verify button
                       GradientButton(
                         label: '✦  Verify Recitation',
-                        enabled: _hasRecording,
+                        enabled: _hasRecording && _audioPath != null,
                         onPressed: () {
                           Navigator.push(
                             context,
                             PageRouteBuilder(
-                              pageBuilder: (_, a, __) => VerifyScreen(surah: widget.surah),
+                              pageBuilder: (_, a, __) => VerifyScreen(surah: widget.surah, audioFile: File(_audioPath!),),
                               transitionsBuilder: (_, a, __, child) => SlideTransition(
                                 position: Tween<Offset>(
                                   begin: const Offset(1, 0),

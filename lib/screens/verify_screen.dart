@@ -1,133 +1,206 @@
+// verify_screen.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
+
 import '../models/surah.dart';
-import '../data/surah_data.dart';
 import '../theme/app_colors.dart';
 import '../widgets/word_chip.dart';
+import '../services/quran_api_service.dart';
 
-class VerifyScreen extends StatelessWidget {
+class VerifyScreen extends StatefulWidget {
   final Surah surah;
+  final File audioFile;
 
-  const VerifyScreen({super.key, required this.surah});
+  const VerifyScreen({
+    super.key,
+    required this.surah,
+    required this.audioFile,
+  });
+
+  @override
+  State<VerifyScreen> createState() => _VerifyScreenState();
+}
+
+class _VerifyScreenState extends State<VerifyScreen> {
+  late Future<RecitationResult> _futureResult;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureResult = QuranApiService.recite(
+      audioFile: widget.audioFile,
+      surahNumber: widget.surah.number,
+      startWordAbs: 0,
+      wordCount: 100,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final correct = mockWords.where((w) => w.isCorrect).length;
-    final wrong = mockWords.where((w) => !w.isCorrect).length;
-    final pct = (correct / mockWords.length * 100).round();
+    return FutureBuilder<RecitationResult>(
+      future: _futureResult,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            body: Container(
+              decoration: const BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment(-0.4, -0.6),
+                  radius: 1.5,
+                  colors: [Color(0xFFF5E6C8), AppColors.bg, Color(0xFFF0DFC0)],
+                  stops: [0.0, 0.55, 1.0],
+                ),
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(color: AppColors.gold),
+              ),
+            ),
+          );
+        }
 
-    String feedbackIcon;
-    String feedbackText;
-    if (pct >= 80) {
-      feedbackIcon = '🌟';
-      feedbackText = 'Excellent recitation! Keep up the great work.';
-    } else if (pct >= 50) {
-      feedbackIcon = '📖';
-      feedbackText = 'Good effort. Review the highlighted words and try again.';
-    } else {
-      feedbackIcon = '💪';
-      feedbackText = 'Keep practicing. Focus on the words marked in red.';
-    }
-
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(-0.4, -0.6),
-            radius: 1.5,
-            colors: [Color(0xFFF5E6C8), AppColors.bg, Color(0xFFF0DFC0)],
-            stops: [0.0, 0.55, 1.0],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(context),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Score card
-                      _buildScoreCard(pct, correct, wrong),
-                      const SizedBox(height: 16),
-
-                      // Section label
-                      const Text(
-                        'Your Recitation — Word by Word',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textMid,
-                          letterSpacing: 0.5,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Word chips (RTL wrap)
-                      Directionality(
-                        textDirection: TextDirection.rtl,
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: List.generate(
-                            mockWords.length,
-                            (i) => TweenAnimationBuilder<double>(
-                              tween: Tween(begin: 0, end: 1),
-                              duration: Duration(milliseconds: 300 + i * 40),
-                              curve: Curves.easeOut,
-                              builder: (_, v, child) => Opacity(
-                                opacity: v,
-                                child: Transform.translate(
-                                  offset: Offset(0, 14 * (1 - v)),
-                                  child: child,
-                                ),
-                              ),
-                              child: WordChip(word: mockWords[i]),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Feedback box
-                      _buildFeedbackBox(feedbackIcon, feedbackText),
-                      const SizedBox(height: 20),
-
-                      // Retry button
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: AppColors.goldLight,
-                              width: 2,
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            '↺  Try Again',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.gold,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment(-0.4, -0.6),
+                  radius: 1.5,
+                  colors: [Color(0xFFF5E6C8), AppColors.bg, Color(0xFFF0DFC0)],
+                  stops: [0.0, 0.55, 1.0],
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  'Error while verifying recitation:\n\n${snapshot.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.red,
+                    fontSize: 15,
                   ),
                 ),
               ),
-            ],
+            ),
+          );
+        }
+
+        final result = snapshot.data!;
+        final words = result.words;
+
+        final correct = words.where((w) => w.isCorrect).length;
+        final wrong = words.where((w) => !w.isCorrect).length;
+        final pct = words.isEmpty ? 0 : (correct / words.length * 100).round();
+
+        String feedbackIcon;
+        String feedbackText;
+        if (pct >= 80) {
+          feedbackIcon = '🌟';
+          feedbackText = 'Excellent recitation! Keep up the great work.';
+        } else if (pct >= 50) {
+          feedbackIcon = '📖';
+          feedbackText = 'Good effort. Review the highlighted words and try again.';
+        } else {
+          feedbackIcon = '💪';
+          feedbackText = 'Keep practicing. Focus on the words marked in red.';
+        }
+
+        return Scaffold(
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment(-0.4, -0.6),
+                radius: 1.5,
+                colors: [Color(0xFFF5E6C8), AppColors.bg, Color(0xFFF0DFC0)],
+                stops: [0.0, 0.55, 1.0],
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  _buildHeader(context),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildScoreCard(pct, correct, wrong),
+                          const SizedBox(height: 16),
+
+                          const Text(
+                            'Your Recitation — Word by Word',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMid,
+                              letterSpacing: 0.5,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          Directionality(
+                            textDirection: TextDirection.rtl,
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: List.generate(
+                                words.length,
+                                (i) => TweenAnimationBuilder<double>(
+                                  tween: Tween(begin: 0, end: 1),
+                                  duration: Duration(milliseconds: 300 + i * 40),
+                                  curve: Curves.easeOut,
+                                  builder: (_, v, child) => Opacity(
+                                    opacity: v,
+                                    child: Transform.translate(
+                                      offset: Offset(0, 14 * (1 - v)),
+                                      child: child,
+                                    ),
+                                  ),
+                                  child: WordChip(word: words[i]),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          _buildFeedbackBox(feedbackIcon, feedbackText),
+                          const SizedBox(height: 20),
+
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              decoration: BoxDecoration(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: AppColors.goldLight,
+                                  width: 2,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                '↺  Try Again',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.gold,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -165,7 +238,7 @@ class VerifyScreen extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            surah.arabic,
+            widget.surah.arabic,
             textDirection: TextDirection.rtl,
             style: const TextStyle(
               fontFamily: 'Amiri',
@@ -175,7 +248,7 @@ class VerifyScreen extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            surah.name,
+            widget.surah.name,
             style: const TextStyle(
               fontSize: 13,
               color: AppColors.textMid,
@@ -208,7 +281,6 @@ class VerifyScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Score circle
           Container(
             width: 80,
             height: 80,
@@ -245,7 +317,6 @@ class VerifyScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 20),
-          // Stats
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
