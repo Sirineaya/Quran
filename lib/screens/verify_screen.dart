@@ -1,5 +1,6 @@
 // verify_screen.dart
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../models/surah.dart';
@@ -9,12 +10,16 @@ import '../services/quran_api_service.dart';
 
 class VerifyScreen extends StatefulWidget {
   final Surah surah;
-  final File audioFile;
+  final File? audioFile;
+  final Uint8List? audioBytes;
+  final String? audioName;
 
   const VerifyScreen({
     super.key,
     required this.surah,
     required this.audioFile,
+    this.audioBytes,
+    this.audioName,
   });
 
   @override
@@ -28,10 +33,10 @@ class _VerifyScreenState extends State<VerifyScreen> {
   void initState() {
     super.initState();
     _futureResult = QuranApiService.recite(
-      audioFile: widget.audioFile,
-      surahNumber: widget.surah.number,
-      startWordAbs: 0,
-      wordCount: 100,
+       audioFile: widget.audioFile,
+       audioBytes: widget.audioBytes,
+       filename: widget.audioName ?? 'audio.wav',
+       surahNumber: widget.surah.number,
     );
   }
 

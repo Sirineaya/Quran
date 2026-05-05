@@ -9,7 +9,9 @@ import '../theme/app_colors.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/waveform_widget.dart';
 import 'verify_screen.dart';
-
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
+import 'package:file_picker/file_picker.dart';
 class RecordScreen extends StatefulWidget {
   final Surah surah;
 
@@ -27,7 +29,8 @@ class _RecordScreenState extends State<RecordScreen> with TickerProviderStateMix
   final AudioRecorder _recorder = AudioRecorder();
   String? _audioPath;
   late AnimationController _pulseController;
-
+  Uint8List? _audioBytes;
+  String? _audioName;
   @override
   void initState() {
     super.initState();
@@ -47,6 +50,25 @@ class _RecordScreenState extends State<RecordScreen> with TickerProviderStateMix
 
  Future<void> _toggleRecord() async {
   print("RECORD BUTTON CLICKED");
+   if (kIsWeb) {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['wav', 'mp3', 'm4a'],
+      withData: true,
+    );
+
+    if (result == null || result.files.single.bytes == null) return;
+
+    setState(() {
+      _audioBytes = result.files.single.bytes!;
+      _audioName = result.files.single.name;
+      _hasRecording = true;
+      _isRecording = false;
+      _timerSeconds = 1;
+    });
+
+    return;
+  }
   if (_isRecording) {
     final path = await _recorder.stop();
 
@@ -153,12 +175,12 @@ class _RecordScreenState extends State<RecordScreen> with TickerProviderStateMix
                       // Verify button
                       GradientButton(
                         label: '✦  Verify Recitation',
-                        enabled: _hasRecording && _audioPath != null,
+                        enabled: _hasRecording && (_audioPath != null || _audioBytes != null),
                         onPressed: () {
                           Navigator.push(
                             context,
                             PageRouteBuilder(
-                              pageBuilder: (_, a, __) => VerifyScreen(surah: widget.surah, audioFile: File(_audioPath!),),
+                              pageBuilder: (_, a, __) => VerifyScreen(surah: widget.surah,audioFile: _audioPath == null ? null : File(_audioPath!),audioBytes: _audioBytes,audioName: _audioName,),
                               transitionsBuilder: (_, a, __, child) => SlideTransition(
                                 position: Tween<Offset>(
                                   begin: const Offset(1, 0),

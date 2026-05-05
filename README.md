@@ -1,7 +1,5 @@
 # Quran Recitation App — Flutter
 
-Converted from the HTML prototype to a full Flutter project.
-
 ## Structure
 
 ```
@@ -14,6 +12,8 @@ lib/
 │   └── surah.dart               # Surah & RecitedWord models
 ├── data/
 │   └── surah_data.dart          # Surah list + mock NLP words
+├── services/
+│   └── quran_api_service.dart          # link
 ├── screens/
 │   ├── surah_list_screen.dart   # Screen 1: Browse Surahs
 │   ├── record_screen.dart       # Screen 2: Record recitation
@@ -34,31 +34,76 @@ lib/
 | VerifyScreen | `#screen-verify` | Score circle, RTL word chips, feedback box |
 
 ## Setup
+# Quran Recitation Correction — Web Version (Chrome)
 
-1. Add fonts to `pubspec.yaml` (uncomment the fonts section).
-2. Download **Amiri** and **Cormorant Garamond** from Google Fonts and place in `fonts/`.
-3. Alternatively, use the `google_fonts` package:
+This project includes a web testing version of the Quran Recitation Correction System.  
+It allows users to verify recitation using an audio file upload instead of live recording.
 
-```yaml
-dependencies:
-  google_fonts: ^6.0.0
+Note: The web version is intended for testing and demonstration. The full functionality is designed for mobile platforms (Android/iOS).
+
+---
+
+## Architecture
+
+User (Chrome) → Upload audio (.wav)  
+→ Flutter Web App  
+→ POST /recite (FastAPI via ngrok)  
+→ Whisper Model (Colab)  
+→ Word-by-word correction
+
+---
+
+## How to Test (Chrome)
+
+### 1. Run the backend (Google Colab)
+
+- Open the Colab notebook
+- Run all cells
+- Ensure the following output appears:
+API is live
+URL: https://0c3a-35-237-151-57.ngrok-free.app
+
+
+- Test the API:
+
+
+https://0c3a-35-237-151-57.ngrok-free.app/health
+
+
+Expected response:
+
+```json
+{"status":"ok","device":"cpu","surahs_loaded":29}
 ```
+### Test workflow
+Select a surah
+Click "Record"
+Upload an audio file (.wav)
+Click "Verify Recitation"
+View results:
+Correct words are shown in green
+Incorrect words are shown in red
 
-Then replace font references with:
-```dart
-GoogleFonts.amiri(...)
-GoogleFonts.cormorantGaramond(...)
-```
+### Important Conditions
 
-## Real Microphone Integration
+Backend must be running
 
-Replace the mock timer in `RecordScreen` with `record` package:
-```yaml
-dependencies:
-  record: ^5.0.0
-  permission_handler: ^11.0.0
-```
+The system depends on:
 
-## Real NLP Verification
+Google Colab session
+ngrok tunnel
 
-Replace `mockWords` in `surah_data.dart` with an API call to your Quranic speech recognition backend.
+If Colab stops:
+
+API stops working
+Requests will fail
+### No microphone recording in Chrome
+
+Due to Flutter Web limitations:
+
+Microphone recording is not supported
+Mobile plugins do not work on web
+
+The web version uses:
+
+File upload instead of recording
